@@ -1,39 +1,44 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, render_template, jsonify
 import os
 import pickle
 import numpy as np
 
 app = Flask(__name__)
 
-# Load your model (ensure 'model.pkl' is in the same directory)
+# Load your model
 model = pickle.load(open('model.pkl', 'rb'))
 
 @app.route('/')
 def home():
-    return "🏡 House Price Prediction API is Running!"
+    return render_template('index.html')  # this renders your form
 
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
-        data = request.get_json(force=True)
+        # Fetch data from form
+        features = [
+            float(request.form['area']),
+            int(request.form['bedrooms']),
+            int(request.form['bathrooms']),
+            int(request.form['stories']),
+            int(request.form['mainroad']),
+            int(request.form['guestroom']),
+            int(request.form['basement']),
+            int(request.form['hotwaterheating']),
+            int(request.form['airconditioning']),
+            int(request.form['parking']),
+            int(request.form['prefarea']),
+            int(request.form['furnishingstatus'])
+        ]
 
-        # Ensure all keys are present
-        expected_keys = ['area', 'bedrooms', 'bathrooms', 'stories',
-                         'mainroad', 'guestroom', 'basement',
-                         'hotwaterheating', 'airconditioning',
-                         'parking', 'prefarea', 'furnishingstatus']
-        
-        if not all(key in data for key in expected_keys):
-            return jsonify({"error": "Missing input values"}), 400
-
-        features = [data[key] for key in expected_keys]
         prediction = model.predict([np.array(features)])
+        output = int(prediction[0])
 
-        return jsonify({'predicted_price': int(prediction[0])})
+        return render_template('index.html', prediction_text=f'Predicted House Price: ₹{output}')
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return render_template('index.html', prediction_text=f'Error: {str(e)}')
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))  # for Render deployment
+    port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
